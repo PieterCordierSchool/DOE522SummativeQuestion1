@@ -1,0 +1,104 @@
+# ASP.NET Core
+# Build and test ASP.NET Core projects targeting .NET Core.
+# Add steps that run tests, create a NuGet package, deploy, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
+
+trigger:
+- master
+
+pool:
+  vmImage: 'windows-latest'
+
+variables:
+  buildConfiguration: 'Release'
+
+stages:
+- stage: Build
+  jobs:
+  - job: BuildJob
+    displayName: 'Build'
+    pool:
+      vmImage: 'windows-latest'
+    steps:
+    - task: UseDotNet@2
+      inputs:
+        version: '6.x'
+        includePreviewVersions: true
+
+    - task: DotNetCoreCLI@2
+      displayName: 'dotnet build'
+      inputs:
+        command: 'build'
+        configuration: $(buildConfiguration)
+
+    - powershell: |
+        $SMTPServer = "outlook.office365.com"
+        $SMTPPort = 587
+        $SMTPUsername = "cordierp101@outlook.com"
+        $SMTPPassword = "mlvdaanxpgkzrdeb"
+
+        $From = "cordierp101@outlook.com"
+        $To = "cordierp101@hotmail.com"
+        $Subject = "Build Failed for $(Build.DefinitionName)"
+        $Body = "The build for $(Build.DefinitionName) has failed. Please investigate."
+
+        Send-MailMessage -From $From -To $To -Subject $Subject -Body $Body -SmtpServer $SMTPServer -Port $SMTPPort -UseSsl -Credential (New-Object System.Management.Automation.PSCredential($SMTPUsername, (ConvertTo-SecureString $SMTPPassword -AsPlainText -Force)))
+      displayName: 'Send Email Notification - Build Failed'
+      condition: failed()
+
+- stage: Test
+  jobs:
+  - job: TestJob
+    displayName: 'Test'
+    pool:
+      vmImage: 'windows-latest'
+    steps:
+    - task: UseDotNet@2
+      inputs:
+        version: '6.x'
+        includePreviewVersions: true
+
+    # ... (test steps)
+
+- stage: Deploy
+  jobs:
+  - job: DeployJob
+    displayName: 'Deploy to Staging'
+    pool:
+      vmImage: 'windows-latest'
+    steps:
+    - task: UseDotNet@2
+      inputs:
+        version: '6.x'
+        includePreviewVersions: true
+
+    - task: DotNetCoreCLI@2
+      displayName: 'dotnet publish'
+      inputs:
+        command: 'publish'
+        arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)/publish'
+
+    - task: AzureRmWebAppDeployment@4
+      displayName: 'Deploy to Azure App Service'
+      inputs:
+        ConnectionType: 'AzureRM'
+        azureSubscription: 'myConnection'
+        appType: 'webApp'
+        WebAppName: 'myWebApp990'
+        packageForLinux: '$(Build.ArtifactStagingDirectory)/publish'
+        enableCustomDeployment: true
+
+    - powershell: |
+        $SMTPServer = "outlook.office365.com"
+        $SMTPPort = 587
+        $SMTPUsername = "cordierp101@outlook.com"
+        $SMTPPassword = "mlvdaanxpgkzrdeb"
+
+        $From = "cordierp101@outlook.com"
+        $To = "cordierp101@hotmail.com"
+        $Subject = "Deployment Failed for $(Build.DefinitionName)"
+        $Body = "The Deployment for $(Build.DefinitionName) has failed. Please investigate."
+
+        Send-MailMessage -From $From -To $To -Subject $Subject -Body $Body -SmtpServer $SMTPServer -Port $SMTPPort -UseSsl -Credential (New-Object System.Management.Automation.PSCredential($SMTPUsername, (ConvertTo-SecureString $SMTPPassword -AsPlainText -Force)))
+      displayName: 'Send Email Notification - Deployment Failed'
+      condition: failed()
