@@ -78,15 +78,7 @@ stages:
         command: 'publish'
         arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)/publish'
 
-    - task: AzureRmWebAppDeployment@4
-      displayName: 'Deploy to Azure App Service'
-      inputs:
-        ConnectionType: 'AzureRM'
-        azureSubscription: 'myConnection'
-        appType: 'webApp'
-        WebAppName: 'myWebApp990'
-        packageForLinux: '$(Build.ArtifactStagingDirectory)/publish'
-        enableCustomDeployment: true
+
 
     - powershell: |
         $SMTPServer = "outlook.office365.com"
